@@ -77,6 +77,12 @@ def transform_data_for_elasticsearch(rows: Generator[Dict[str, any], None, None]
 
 @backoff.on_exception(backoff.expo, Exception, max_time=300)
 def load_data_to_elasticsearch(data):
+    index_name = "movies"
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index=index_name, body=index_settings)
+        print(f"Индекс '{index_name}' успешно создан.")
+    else:
+        print(f"Индекс '{index_name}' уже существует.")
     helpers.bulk(es, data)
     logger.info("Данные успешно загружены в Elasticsearch")
 
