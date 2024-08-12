@@ -22,8 +22,6 @@ services:
     env_file:
       - ./.env
     container_name: postgres_database
-    ports:
-      - 5432:5432
     command: "-c search_path=public,content"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

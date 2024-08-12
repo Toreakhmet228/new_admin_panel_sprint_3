@@ -1,7 +1,9 @@
 from elasticsearch import Elasticsearch
+import os 
+from dotenv import load_dotenv
 
 # Подключение к Elasticsearch
-es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
+es = Elasticsearch([{'host': os.environ.get("HOST"), 'port': os.environ.get("PORT_ELASTIK"), 'scheme': 'http'}])
 
 # Определение схемы индекса
 index_settings = {
@@ -67,9 +69,3 @@ index_settings = {
 }
 
 # Создание индекса
-index_name = "movies"
-if not es.indices.exists(index=index_name):
-    es.indices.create(index=index_name, body=index_settings)
-    print(f"Индекс '{index_name}' успешно создан.")
-else:
-    print(f"Индекс '{index_name}' уже существует.")

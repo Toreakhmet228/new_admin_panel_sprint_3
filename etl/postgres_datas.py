@@ -1,16 +1,22 @@
-import psycopg2
-import os
 import logging
+import os
+from typing import List,Generator,Dict
+
+import backoff
+import psycopg2
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch, helpers
-import backoff
+from pydantic import BaseSettings
+
+from .Config import Settings
 
 load_dotenv()
+settings = Settings()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
+es = Elasticsearch([{'host': os.environ.get("HOST"), 'port': os.environ.get("PORT_ELASTIK"), 'scheme': 'http'}])
 
 def write_sql_file(path: str) -> str:
     with open(path, "r") as file:
@@ -18,13 +24,13 @@ def write_sql_file(path: str) -> str:
     return sql
 
 @backoff.on_exception(backoff.expo, psycopg2.OperationalError, max_time=300)
-def get_data_from_postgresql(batch_size=5000):
+def get_data_from_postgresql(batch_size :int =5000)-> List[str]:
     dsl = {
-        "dbname": os.environ.get("POSTGRES_DB"),
-        "user": os.environ.get("POSTGRES_USER"),
-        "password": os.environ.get("POSTGRES_PASSWORD"),
-        "host": "127.0.0.1",
-        "port": os.environ.get("SQL_PORT", 5432)
+        "dbname": settings.db_name,
+        "user": settings.db_user,
+        "password": settings.db_password,
+        "host": settings.db_host,
+        "port": settings.db_port,
     }
 
     connect = psycopg2.connect(**dsl)
@@ -41,30 +47,33 @@ def get_data_from_postgresql(batch_size=5000):
     cursor.close()
     connect.close()
 
-def transform_data_for_elasticsearch(rows):
-    for row in rows:
-        if len(row) < 10:  
+def transform_data_for_elasticsearch(rows: Generator[Dict[str, any], None, None]): 
+    for row in rows: 
+        required_keys = ["id", "imdb_rating", "title", "description", "directors_names", "actors_names", "writers_names", "directors", "actors", "writers"]
+        
+        if not all(key in row for key in required_keys):
             logger.error(f"Неверный формат данных: {row}")
-            continue
-        try:
-            doc = {
-                "_index": "movies",
-                "_id": row[0], 
-                "_source": {
-                    "imdb_rating": row[1],  
-                    "title": row[2],  
-                    "description": row[3], 
-                    "directors_names": row[4],  
-                    "actors_names": row[5],  
-                    "writers_names": row[6],  
-                    "directors": [{"id": dir_id, "name": dir_name} for dir_id, dir_name in row[7]],
-                    "actors": [{"id": act_id, "name": act_name} for act_id, act_name in row[8]],
-                    "writers": [{"id": wr_id, "name": wr_name} for wr_id, wr_name in row[9]],
-                }
-            }
-            yield doc
-        except IndexError as e:
-            logger.error(f"Ошибка трансформации данных: {e}, строка: {row}")
+            continue 
+        
+        try: 
+            doc = { 
+                "_index": "movies", 
+                "_id": row["id"],  
+                "_source": { 
+                    "imdb_rating": row["imdb_rating"],   
+                    "title": row["title"],   
+                    "description": row["description"],  
+                    "directors_names": row["directors_names"],   
+                    "actors_names": row["actors_names"],   
+                    "writers_names": row["writers_names"],   
+                    "directors": [{"id": dir_id, "name": dir_name} for dir_id, dir_name in row["directors"]], 
+                    "actors": [{"id": act_id, "name": act_name} for act_id, act_name in row["actors"]], 
+                    "writers": [{"id": wr_id, "name": wr_name} for wr_id, wr_name in row["writers"]], 
+                } 
+            } 
+            yield doc 
+        except KeyError as e: 
+            logger.error(f"Ошибка трансформации данных: отсутствует ключ {e}, строка: {row}")
 
 @backoff.on_exception(backoff.expo, Exception, max_time=300)
 def load_data_to_elasticsearch(data):
