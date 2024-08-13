@@ -1,9 +1,10 @@
 from elasticsearch import Elasticsearch
 import os 
 from dotenv import load_dotenv
-
+from .Config import Settings
 # Подключение к Elasticsearch
-es = Elasticsearch([{'host': os.environ.get("HOST"), 'port': os.environ.get("PORT_ELASTIK"), 'scheme': 'http'}])
+settings=Settings()
+es = Elasticsearch([{'host': settings.es_host, 'port': settings.es_port, 'scheme':settings.es_scheme}])
 
 # Определение схемы индекса
 index_settings = {
