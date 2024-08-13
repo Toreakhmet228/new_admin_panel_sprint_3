@@ -2,6 +2,7 @@ from pydantic import BaseSettings
 import os
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 class Settings(BaseSettings):
@@ -21,8 +22,3 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-es = Elasticsearch([{
-    'host': settings.es_host,
-    'port': settings.es_port,
-    'scheme': settings.es_scheme
-}])
