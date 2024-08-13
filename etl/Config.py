@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     es_scheme: str = os.environ.get("ELASTIC_SCHEME", 'http')
 
     class Config:
-        env_file = '.env'
+        env_file = 'env.example'
         env_prefix = 'POSTGRES_'  # Префикс для переменных окружения, относящихся к Postgres
 
 settings = Settings()
