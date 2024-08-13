@@ -20,7 +20,7 @@ services:
   theatre-db:
     image: postgres:latest
     env_file:
-      - ./.env
+      - ./env.example
     container_name: postgres_database
     command: "-c search_path=public,content"
     environment:
